@@ -20,9 +20,12 @@
 
 #import "RLMConstants.h"
 #import "RLMUtil.hpp"
-#import "RLMVersion.h"
 
-#import "shared_realm.hpp"
+#ifndef REALM_COCOA_VERSION
+#import "RLMVersion.h"
+#endif
+
+#import <realm/object-store/shared_realm.hpp>
 
 @interface UtilTests : RLMTestCase
 

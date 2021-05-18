@@ -21,14 +21,21 @@
 #import "RLMRealmConfiguration_Private.hpp"
 #import "RLMRealm_Private.hpp"
 
-#import "impl/realm_coordinator.hpp"
-
 #import <realm/string_data.hpp>
+#import <realm/object-store/impl/realm_coordinator.hpp>
 
 #import <sys/resource.h>
 
 // A whole bunch of blocks don't use their RLMResults parameter
 #pragma clang diagnostic ignored "-Wunused-parameter"
+
+@interface ManualRefreshRealm : RLMRealm
+@end
+@implementation ManualRefreshRealm
+- (void)verifyNotificationsAreSupported:(__unused bool)isCollection {
+    // The normal implementation of this will reject realms with automatic change notifications disabled
+}
+@end
 
 @interface AsyncTests : RLMTestCase
 @end
@@ -223,12 +230,14 @@
 
     __block XCTestExpectation *expectation = [self expectationWithDescription:@""];
     __block int expected = 0;
-    auto token = [[array.intArray objectsWhere:@"intCol > 0"] addNotificationBlock:^(RLMResults *results, RLMCollectionChange *change, NSError *e) {
+    auto token = [[array.intArray objectsWhere:@"intCol > 0"] addNotificationBlock:^(RLMResults<IntObject *> *results,
+                                                                                     RLMCollectionChange *change, NSError *e) {
+//        NSLog(@"IntArray: %d", (int)array.intArray.count);
         XCTAssertNil(e);
         XCTAssertNotNil(results);
         XCTAssertEqual((int)results.count, expected);
         for (int i = 0; i < expected; ++i) {
-            XCTAssertEqual([results[i] intCol], i + 1);
+            XCTAssertEqual(results[i].intCol, i + 1);
         }
         ++expected;
         [expectation fulfill];
@@ -321,44 +330,27 @@
         [expectation fulfill];
     }];
 
-    dispatch_semaphore_t sema = dispatch_semaphore_create(0);
+    // Advance the version on a different thread, and then wait for async work
+    // to complete for that new version
+    [self dispatchAsyncAndWait:^{
+        [RLMRealm.defaultRealm transactionWithBlock:^{
+            [IntObject createInDefaultRealmWithValue:@[@0]];
+        } error:nil];
 
-    // Add a notification block on a background thread and wait for it to have been added
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        @autoreleasepool {
-            __block RLMNotificationToken *token;
-            CFRunLoopPerformBlock(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode, ^{
-                token = [RLMRealm.defaultRealm addNotificationBlock:^(RLMNotification notification, RLMRealm *realm) {
-                    CFRunLoopStop(CFRunLoopGetCurrent());
-                    dispatch_semaphore_signal(sema);
-                    [token invalidate];
-                    token = nil;
-                }];
-                dispatch_semaphore_signal(sema);
-            });
-
-            CFRunLoopRun();
-        }
-        dispatch_semaphore_signal(sema);
-    });
-    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
-
-    // Make a commit on a background thread, and wait for the notification for
-    // it to have been sent to the other background thread (which happens only
-    // after all queries have run)
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        @autoreleasepool {
-            [RLMRealm.defaultRealm transactionWithBlock:^{
-                [IntObject createInDefaultRealmWithValue:@[@0]];
-            } error:nil];
-        }
-    });
-    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+        __block RLMNotificationToken *token;
+        CFRunLoopPerformBlock(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode, ^{
+            token = [IntObject.allObjects addNotificationBlock:^(RLMResults *, RLMCollectionChange *, NSError *) {
+                [token invalidate];
+                token = nil;
+                CFRunLoopStop(CFRunLoopGetCurrent());
+            }];
+        });
+        CFRunLoopRun();
+    }];
 
     // Only now let the main thread pick up the notifications
     [self waitForExpectationsWithTimeout:2.0 handler:nil];
     [token invalidate];
-    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
 }
 
 - (void)testCommitInOneNotificationDoesNotCancelOtherNotifications {
@@ -401,6 +393,7 @@
     [token2 invalidate];
 }
 
+#if 0 // Not obvious if there's still any way for notifiers to fail other than memory allocation failure
 - (void)testErrorHandling {
     RLMRealm *realm = [RLMRealm defaultRealm];
     XCTestExpectation *exp = [self expectationWithDescription:@""];
@@ -446,6 +439,7 @@
     [token invalidate];
     [token2 invalidate];
 }
+#endif
 
 - (void)testRLMResultsInstanceIsReused {
     __weak __block RLMResults *prev;
@@ -600,7 +594,7 @@
     // Create ten RLMRealm instances, each with a different read version
     RLMRealm *realms[10];
     for (int i = 0; i < 10; ++i) {
-        RLMRealm *realm = realms[i] = [RLMRealm realmWithConfiguration:config error:nil];
+        RLMRealm *realm = realms[i] = [ManualRefreshRealm realmWithConfiguration:config error:nil];
         [realm transactionWithBlock:^{
             [IntObject createInRealm:realm withValue:@[@(i)]];
         }];
@@ -629,7 +623,7 @@
     }
 
     // Let the background job run now
-    auto coord = realm::_impl::RealmCoordinator::get_existing_coordinator(config.config.path);
+    auto coord = realm::_impl::RealmCoordinator::get_coordinator(config.config.path);
     coord->on_change();
 
     for (int i = 7; i < 10; ++i) {
@@ -846,6 +840,18 @@
     }];
 }
 
+- (void)testAddNotificationBlockFromWrongQueue {
+    auto queue = dispatch_queue_create("background queue", DISPATCH_QUEUE_SERIAL);
+    __block RLMResults *results;
+    dispatch_sync(queue, ^{
+        RLMRealm *realm = [RLMRealm defaultRealmForQueue:queue];
+        results = [IntObject allObjectsInRealm:realm];
+    });
+    XCTAssertThrows([results addNotificationBlock:^(RLMResults *results, RLMCollectionChange *change, NSError *error) {
+        XCTFail(@"should not be called");
+    }]);
+}
+
 - (void)testRemoveNotificationBlockFromWrongThread {
     // Unlike adding this is allowed, because it can happen due to capturing
     // tokens in blocks and users are very confused by errors from deallocation
@@ -983,6 +989,28 @@
 
     dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
     CFRunLoopRun();
+    [token invalidate];
+}
+
+- (void)testNotificationDeliveryToQueue {
+    RLMRealm *realm = [RLMRealm defaultRealm];
+    __block RLMNotificationToken *token;
+    dispatch_semaphore_t sema = dispatch_semaphore_create(0);
+
+    [self dispatchAsync:^{
+        RLMRealm *bgRealm = [RLMRealm defaultRealmForQueue:self.bgQueue];
+        token = [[IntObject allObjectsInRealm:bgRealm] addNotificationBlock:^(RLMResults *results, RLMCollectionChange *, NSError *) {
+            XCTAssertNotNil(results);
+            XCTAssertNoThrow(results.count);
+            dispatch_semaphore_signal(sema);
+        }];
+    }];
+    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+
+    [realm transactionWithBlock:^{
+        [IntObject createInRealm:realm withValue:@[@1]];
+    }];
+    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
     [token invalidate];
 }
 

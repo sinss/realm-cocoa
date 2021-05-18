@@ -19,7 +19,9 @@
 #import <Foundation/Foundation.h>
 
 @class RLMRealmConfiguration;
-@class RLMSyncUser;
+@class RLMUser;
+@class RLMApp;
+@protocol RLMBSON;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -30,66 +32,33 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RLMSyncConfiguration : NSObject
 
 /// The user to which the remote Realm belongs.
-@property (nonatomic, readonly) RLMSyncUser *user;
+@property (nonatomic, readonly) RLMUser *user;
 
 /**
- The URL of the remote Realm upon the Realm Object Server.
-
- @warning The URL cannot end with `.realm`, `.realm.lock` or `.realm.management`.
+ The value this Realm is partitioned on. The partition key is a property defined in
+ MongoDB Realm. All classes with a property with this value will be synchronized to the
+ Realm.
  */
-@property (nonatomic, readonly) NSURL *realmURL;
-
+@property (nonatomic, readonly) id<RLMBSON> partitionValue;
 
 /**
- Whether SSL certificate validation is enabled for the connection associated
- with this configuration value. SSL certificate validation is ON by default.
-
- @warning NEVER disable certificate validation for clients and servers in production.
+ Whether nonfatal connection errors should cancel async opens.
+ 
+ By default, if a nonfatal connection error such as a connection timing out occurs, any currently pending asyncOpen operations will ignore the error and continue to retry until it succeeds. If this is set to true, the open will instead fail and report the error.
+ 
+ FIXME: This should probably be true by default in the next major version.
  */
-@property (nonatomic) BOOL enableSSLValidation;
+@property (nonatomic) bool cancelAsyncOpenOnNonFatalErrors;
 
-/**
- Whether this Realm should be opened in 'partial synchronization' mode.
- Partial synchronization mode means that no objects are synchronized from the remote Realm
- except those matching queries that the user explicitly specifies.
+/// :nodoc:
+- (instancetype)initWithUser:(RLMUser *)user
+              partitionValue:(nullable id<RLMBSON>)partitionValue __attribute__((unavailable("Use [RLMUser configurationWithPartitionValue:] instead")));
 
- @warning Partial synchronization is a tech preview. Its APIs are subject to change.
-*/
-@property (nonatomic) BOOL isPartial;
+/// :nodoc:
++ (RLMRealmConfiguration *)automaticConfiguration __attribute__((unavailable("Use [RLMUser configuration] instead")));
 
-/**
- The prefix that is prepended to the path in the HTTP request
- that initiates a sync connection. The value specified must match with the server's expectation.
- Changing the value of `urlPrefix` should be matched with a corresponding
- change of the server's configuration.
- If no value is specified here then the default `/realm-sync` path is used.
-*/
-@property (nonatomic, nullable, copy) NSString *urlPrefix;
-
-/**
- Create a sync configuration instance.
-
- @param user    A `RLMSyncUser` that owns the Realm at the given URL.
- @param url     The unresolved absolute URL to the Realm on the Realm Object Server, e.g.
-                `realm://example.org/~/path/to/realm`. "Unresolved" means the path should
-                contain the wildcard marker `~`, which will automatically be filled in with
-                the user identity by the Realm Object Server.
- */
-- (instancetype)initWithUser:(RLMSyncUser *)user realmURL:(NSURL *)url;
-
-/**
-Return a Realm configuration for syncing with the default Realm of the currently logged-in sync user.
-
-Partial synchronization is enabled in the returned configuration.
- */
-+ (RLMRealmConfiguration *)automaticConfiguration;
-
-/**
- Return a Realm configuration for syncing with the default Realm of the given sync user.
-
- Partial synchronization is enabled in the returned configuration.
- */
-+ (RLMRealmConfiguration *)automaticConfigurationForUser:(RLMSyncUser *)user;
+/// :nodoc:
++ (RLMRealmConfiguration *)automaticConfigurationForUser:(RLMUser *)user __attribute__((unavailable("Use [RLMUser configuration] instead")));
 
 /// :nodoc:
 - (instancetype)init __attribute__((unavailable("This type cannot be created directly")));

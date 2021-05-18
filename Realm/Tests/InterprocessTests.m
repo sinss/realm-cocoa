@@ -20,10 +20,20 @@
 
 #import "RLMConstants.h"
 
+#if TARGET_OS_OSX && !TARGET_OS_MACCATALYST
+
 @interface InterprocessTest : RLMMultiProcessTestCase
 @end
 
 @implementation InterprocessTest
+- (void)setUp {
+    [super setUp];
+
+    RLMRealmConfiguration *config = [RLMRealmConfiguration defaultConfiguration];
+    config.objectClasses = @[IntObject.class, DoubleObject.class];
+    [RLMRealmConfiguration setDefaultConfiguration:config];
+}
+
 - (void)testCreateInitialRealmInChild {
     if (self.isParent) {
         RLMRunChildAndWait();
@@ -55,7 +65,15 @@
 - (void)testCompactOnLaunchSuccessful {
     if (self.isParent) {
         @autoreleasepool {
-            [[RLMRealm defaultRealm] transactionWithBlock:^{}];
+            RLMRealm *realm = RLMRealm.defaultRealm;
+            [realm transactionWithBlock:^{
+                for (int i = 0; i < 1000; ++i) {
+                    [IntObject createInRealm:realm withValue:@[@(i)]];
+                }
+            }];
+            [realm transactionWithBlock:^{
+                [realm deleteAllObjects];
+            }];
         }
         RLMRunChildAndWait(); // runs the event loop
     } else {
@@ -102,8 +120,9 @@
 
 - (void)testCompactOnLaunchFailSilently {
     if (self.isParent) {
-        [[RLMRealm defaultRealm] transactionWithBlock:^{}];
+        RLMRealm *realm  = [RLMRealm defaultRealm];
         RLMRunChildAndWait(); // runs the event loop
+        (void)[realm configuration]; // ensure the Realm stays open while the child process runs
     } else {
         unsigned long long (^fileSize)(NSString *) = ^unsigned long long(NSString *path) {
             NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
@@ -120,7 +139,7 @@
         unsigned long long sizeBefore = fileSize(config.fileURL.path);
         RLMRealm *realm = [RLMRealm realmWithConfiguration:config error:nil];
         unsigned long long sizeAfter = fileSize(config.fileURL.path);
-        XCTAssertEqual(sizeBefore, sizeAfter);
+        XCTAssertLessThanOrEqual(sizeBefore, sizeAfter);
         XCTAssertTrue(realm.isEmpty);
         XCTAssertTrue(blockCalled);
     }
@@ -362,7 +381,7 @@
     else {
         RLMRealm *realm = RLMRealm.defaultRealm;
         [realm beginWriteTransaction];
-        abort();
+        _Exit(1);
     }
 }
 
@@ -378,7 +397,7 @@
     else {
         RLMRealm *realm = RLMRealm.defaultRealm;
         [realm beginWriteTransaction];
-        abort();
+        _Exit(1);
     }
 }
 
@@ -395,3 +414,5 @@
 }
 
 @end
+
+#endif

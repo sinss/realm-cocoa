@@ -1,8 +1,9 @@
+!!! MANDATORY TO FILL OUT !!!
 <!---
 
-**Questions**: If you have questions about how to use Realm, ask on
-[StackOverflow](http://stackoverflow.com/questions/ask?tags=realm).
-We monitor the `realm` tag.
+**Questions**: If you have questions about HOW TO USE Realm, ask on
+[StackOverflow](http://stackoverflow.com/questions/ask?tags=realm),
+or in our [Swift Forum](https://forums.realm.io/c/swift) or [Obj-C Forum](https://forums.realm.io/c/objc).
 
 **Feature Request**: Just fill in the first two sections below.
 
@@ -22,8 +23,8 @@ and the steps you have taken to reproduce it in as many details as possible.
 e.g. the stack trace of a crash
 -->
 
-## Steps to Reproduce
-<!--- What are steps we can follow to reproduce this issue? -->
+## Steps for others to Reproduce
+<!--- What are steps OTHERS can follow to reproduce this issue? -->
 
 ## Code Sample
 <!---
@@ -40,8 +41,6 @@ Full Xcode projects that we can compile ourselves are ideal!
 which will help determining some of these versions.
 -->
 Realm framework version: ?
-
-Realm Object Server version: ?
 
 Xcode version: ?
 

@@ -24,8 +24,15 @@ class DemoObject: Object {
     @objc dynamic var date = NSDate()
 }
 
+#if !swift(>=4.2)
+extension UITableViewCell {
+    typealias CellStyle = UITableViewCellStyle
+    typealias EditingStyle = UITableViewCellEditingStyle
+}
+#endif
+
 class Cell: UITableViewCell {
-    override init(style: UITableViewCellStyle, reuseIdentifier: String!) {
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String!) {
         super.init(style: .subtitle, reuseIdentifier: reuseIdentifier)
     }
 
@@ -51,7 +58,6 @@ class TableViewController: UITableViewController {
             case .initial:
                 // Results are now populated and can be accessed without blocking the UI
                 self.tableView.reloadData()
-                break
             case .update(_, let deletions, let insertions, let modifications):
                 // Query results have changed, so apply them to the TableView
                 self.tableView.beginUpdates()
@@ -59,11 +65,9 @@ class TableViewController: UITableViewController {
                 self.tableView.deleteRows(at: deletions.map { IndexPath(row: $0, section: 0) }, with: .automatic)
                 self.tableView.reloadRows(at: modifications.map { IndexPath(row: $0, section: 0) }, with: .automatic)
                 self.tableView.endUpdates()
-                break
             case .error(let err):
                 // An error occurred while opening the Realm file on the background worker thread
                 fatalError("\(err)")
-                break
             }
         }
     }
@@ -96,7 +100,7 @@ class TableViewController: UITableViewController {
         return cell
     }
 
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             realm.beginWrite()
             realm.delete(results[indexPath.row])

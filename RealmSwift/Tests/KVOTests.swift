@@ -25,7 +25,7 @@ func nextPrimaryKey() -> Int {
     return pkCounter
 }
 
-class KVOObject: Object {
+class SwiftKVOObject: Object {
     @objc dynamic var pk = nextPrimaryKey() // primary key for equality
     @objc dynamic var ignored: Int = 0
 
@@ -39,8 +39,10 @@ class KVOObject: Object {
     @objc dynamic var stringCol: String = ""
     @objc dynamic var binaryCol: Data = Data()
     @objc dynamic var dateCol: Date = Date(timeIntervalSince1970: 0)
-    @objc dynamic var objectCol: KVOObject?
-    let arrayCol = List<KVOObject>()
+    @objc dynamic var decimalCol: Decimal128 = Decimal128(number: 1)
+    @objc dynamic var objectIdCol = ObjectId()
+    @objc dynamic var objectCol: SwiftKVOObject?
+    let arrayCol = List<SwiftKVOObject>()
     let optIntCol = RealmOptional<Int>()
     let optFloatCol = RealmOptional<Float>()
     let optDoubleCol = RealmOptional<Double>()
@@ -48,6 +50,8 @@ class KVOObject: Object {
     @objc dynamic var optStringCol: String?
     @objc dynamic var optBinaryCol: Data?
     @objc dynamic var optDateCol: Date?
+    @objc dynamic var optDecimalCol: Decimal128?
+    @objc dynamic var optObjectIdCol: ObjectId?
 
     let arrayBool = List<Bool>()
     let arrayInt8 = List<Int8>()
@@ -59,6 +63,8 @@ class KVOObject: Object {
     let arrayString = List<String>()
     let arrayBinary = List<Data>()
     let arrayDate = List<Date>()
+    let arrayDecimal = List<Decimal128>()
+    let arrayObjectId = List<ObjectId>()
 
     let arrayOptBool = List<Bool?>()
     let arrayOptInt8 = List<Int8?>()
@@ -70,6 +76,8 @@ class KVOObject: Object {
     let arrayOptString = List<String?>()
     let arrayOptBinary = List<Data?>()
     let arrayOptDate = List<Date?>()
+    let arrayOptDecimal = List<Decimal128?>()
+    let arrayOptObjectId = List<ObjectId?>()
 
     override class func primaryKey() -> String { return "pk" }
     override class func ignoredProperties() -> [String] { return ["ignored"] }
@@ -100,55 +108,14 @@ class KVOTests: TestCase {
     }
 
     // swiftlint:disable:next cyclomatic_complexity
-    func observeChange<T: Equatable>(_ obj: KVOObject, _ key: String, _ old: T?, _ new: T?,
+    func observeChange<T: Equatable>(_ obj: SwiftKVOObject, _ key: String, _ old: T?, _ new: T?,
                                      fileName: StaticString = #file, lineNumber: UInt = #line, _ block: () -> Void) {
         let kvoOptions: NSKeyValueObservingOptions = [.old, .new]
-#if swift(>=3.2)
-        func observe<Value>(_ keyPath: KeyPath<KVOObject, Value>) -> NSKeyValueObservation {
-            return obj.observe(keyPath, options: kvoOptions) { _, change in
-                self.changeDictionary = [
-                    .oldKey: change.oldValue as? T as Any,
-                    .newKey: change.newValue as? T as Any
-                ]
-            }
-        }
-
-        let observation: NSKeyValueObservation?
-        switch key {
-        case "boolCol":      observation = observe(\.boolCol)
-        case "int8Col":      observation = observe(\.int8Col)
-        case "int16Col":     observation = observe(\.int16Col)
-        case "int32Col":     observation = observe(\.int32Col)
-        case "int64Col":     observation = observe(\.int64Col)
-        case "floatCol":     observation = observe(\.floatCol)
-        case "doubleCol":    observation = observe(\.doubleCol)
-        case "stringCol":    observation = observe(\.stringCol)
-        case "binaryCol":    observation = observe(\.binaryCol)
-        case "dateCol":      observation = observe(\.dateCol)
-        case "objectCol":    observation = observe(\.objectCol)
-        case "optStringCol": observation = observe(\.optStringCol)
-        case "optBinaryCol": observation = observe(\.optBinaryCol)
-        case "optDateCol":   observation = observe(\.optDateCol)
-        case "invalidated":  observation = observe(\.invalidated)
-        default:
-            // some properties don't support Swift Smart KeyPaths, fall back to legacy KVO API
-            observation = nil
-            obj.addObserver(self, forKeyPath: key, options: kvoOptions, context: nil)
-        }
-
-        block()
-        if let observation = observation {
-            observation.invalidate()
-        } else {
-            obj.removeObserver(self, forKeyPath: key)
-        }
-#else
         obj.addObserver(self, forKeyPath: key, options: kvoOptions, context: nil)
         block()
         obj.removeObserver(self, forKeyPath: key)
-#endif
 
-        XCTAssert(changeDictionary != nil, "Did not get a notification", file: fileName, line: lineNumber)
+        XCTAssert(changeDictionary != nil, "Did not get a notification", file: (fileName), line: lineNumber)
         guard changeDictionary != nil else { return }
 
         let actualOld = changeDictionary![.oldKey]! as? T
@@ -156,12 +123,52 @@ class KVOTests: TestCase {
 
         XCTAssert(old == actualOld,
                   "Old value: expected \(String(describing: old)), got \(String(describing: actualOld))",
-                  file: fileName, line: lineNumber)
+                  file: (fileName), line: lineNumber)
         XCTAssert(new == actualNew,
                   "New value: expected \(String(describing: new)), got \(String(describing: actualNew))",
-                  file: fileName, line: lineNumber)
+                  file: (fileName), line: lineNumber)
 
         changeDictionary = nil
+    }
+
+    func observeChange<T: Equatable>(_ obj: SwiftKVOObject, _ keyPath: KeyPath<SwiftKVOObject, T>, _ old: T, _ new: T,
+                                     fileName: StaticString = #file, lineNumber: UInt = #line, _ block: () -> Void) {
+        let kvoOptions: NSKeyValueObservingOptions = [.old, .new]
+        var gotNotification = false
+        let observation = obj.observe(keyPath, options: kvoOptions) { _, change in
+            XCTAssertEqual(change.oldValue, old, file: (fileName), line: lineNumber)
+            XCTAssertEqual(change.newValue, new, file: (fileName), line: lineNumber)
+            gotNotification = true
+        }
+
+        block()
+        observation.invalidate()
+
+        XCTAssertTrue(gotNotification, file: (fileName), line: lineNumber)
+    }
+
+    func observeChange<T: Equatable>(_ obj: SwiftKVOObject, _ keyPath: KeyPath<SwiftKVOObject, T?>, _ old: T?, _ new: T?,
+                                     fileName: StaticString = #file, lineNumber: UInt = #line, _ block: () -> Void) {
+        let kvoOptions: NSKeyValueObservingOptions = [.old, .new]
+        var gotNotification = false
+        let observation = obj.observe(keyPath, options: kvoOptions) { _, change in
+            if let oldValue = change.oldValue {
+                XCTAssertEqual(oldValue, old, file: (fileName), line: lineNumber)
+            } else {
+                XCTAssertNil(old, file: (fileName), line: lineNumber)
+            }
+            if let newValue = change.newValue {
+                XCTAssertEqual(newValue, new, file: (fileName), line: lineNumber)
+            } else {
+                XCTAssertNil(new, file: (fileName), line: lineNumber)
+            }
+            gotNotification = true
+        }
+
+        block()
+        observation.invalidate()
+
+        XCTAssertTrue(gotNotification, file: (fileName), line: lineNumber)
     }
 
     func observeListChange(_ obj: NSObject, _ key: String, _ kind: NSKeyValueChange, _ indexes: NSIndexSet = NSIndexSet(index: 0),
@@ -169,40 +176,33 @@ class KVOTests: TestCase {
         obj.addObserver(self, forKeyPath: key, options: [.old, .new], context: nil)
         block()
         obj.removeObserver(self, forKeyPath: key)
-        XCTAssert(changeDictionary != nil, "Did not get a notification", file: fileName, line: lineNumber)
+        XCTAssert(changeDictionary != nil, "Did not get a notification", file: (fileName), line: lineNumber)
         guard changeDictionary != nil else { return }
 
         let actualKind = NSKeyValueChange(rawValue: (changeDictionary![NSKeyValueChangeKey.kindKey] as! NSNumber).uintValue)!
         let actualIndexes = changeDictionary![NSKeyValueChangeKey.indexesKey]! as! NSIndexSet
-        XCTAssert(actualKind == kind, "Change kind: expected \(kind), got \(actualKind)", file: fileName,
+        XCTAssert(actualKind == kind, "Change kind: expected \(kind), got \(actualKind)", file: (fileName),
             line: lineNumber)
         XCTAssert(actualIndexes.isEqual(indexes), "Changed indexes: expected \(indexes), got \(actualIndexes)",
-            file: fileName, line: lineNumber)
+                  file: (fileName), line: lineNumber)
 
         changeDictionary = nil
     }
 
-    func getObject(_ obj: KVOObject) -> (KVOObject, KVOObject) {
+    func getObject(_ obj: SwiftKVOObject) -> (SwiftKVOObject, SwiftKVOObject) {
         return (obj, obj)
     }
 
     // Actual tests follow
 
     func testAllPropertyTypes() {
-        let (obj, obs) = getObject(KVOObject())
+        let (obj, obs) = getObject(SwiftKVOObject())
 
         observeChange(obs, "boolCol", false, true) { obj.boolCol = true }
-#if swift(>=3.2)
         observeChange(obs, "int8Col", 1 as Int8, 10) { obj.int8Col = 10 }
         observeChange(obs, "int16Col", 2 as Int16, 10) { obj.int16Col = 10 }
         observeChange(obs, "int32Col", 3 as Int32, 10) { obj.int32Col = 10 }
         observeChange(obs, "int64Col", 4 as Int64, 10) { obj.int64Col = 10 }
-#else
-        observeChange(obs, "int8Col", 1, 10) { obj.int8Col = 10 }
-        observeChange(obs, "int16Col", 2, 10) { obj.int16Col = 10 }
-        observeChange(obs, "int32Col", 3, 10) { obj.int32Col = 10 }
-        observeChange(obs, "int64Col", 4, 10) { obj.int64Col = 10 }
-#endif
         observeChange(obs, "floatCol", 5 as Float, 10) { obj.floatCol = 10 }
         observeChange(obs, "doubleCol", 6 as Double, 10) { obj.doubleCol = 10 }
         observeChange(obs, "stringCol", "", "abc") { obj.stringCol = "abc" }
@@ -214,6 +214,13 @@ class KVOTests: TestCase {
         let date = Date(timeIntervalSince1970: 1)
         observeChange(obs, "dateCol", Date(timeIntervalSince1970: 0), date) { obj.dateCol = date }
 
+        let decimal = Decimal128(number: 2)
+        observeChange(obs, "decimalCol", Decimal128(number: 1), decimal) { obj.decimalCol = decimal }
+
+        let oldObjectId = obj.objectIdCol
+        let objectId = ObjectId()
+        observeChange(obs, "objectIdCol", oldObjectId, objectId) { obj.objectIdCol = objectId }
+
         observeListChange(obs, "arrayCol", .insertion) { obj.arrayCol.append(obj) }
         observeListChange(obs, "arrayCol", .removal) { obj.arrayCol.removeAll() }
 
@@ -224,6 +231,8 @@ class KVOTests: TestCase {
         observeChange(obs, "optStringCol", nil, "abc") { obj.optStringCol = "abc" }
         observeChange(obs, "optBinaryCol", nil, data) { obj.optBinaryCol = data }
         observeChange(obs, "optDateCol", nil, date) { obj.optDateCol = date }
+        observeChange(obs, "optDecimalCol", nil, decimal) { obj.optDecimalCol = decimal }
+        observeChange(obs, "optObjectIdCol", nil, objectId) { obj.optObjectIdCol = objectId }
 
         observeChange(obs, "optIntCol", 10, nil) { obj.optIntCol.value = nil }
         observeChange(obs, "optFloatCol", 10.0, nil) { obj.optFloatCol.value = nil }
@@ -232,37 +241,45 @@ class KVOTests: TestCase {
         observeChange(obs, "optStringCol", "abc", nil) { obj.optStringCol = nil }
         observeChange(obs, "optBinaryCol", data, nil) { obj.optBinaryCol = nil }
         observeChange(obs, "optDateCol", date, nil) { obj.optDateCol = nil }
+        observeChange(obs, "optDecimalCol", decimal, nil) { obj.optDecimalCol = nil }
+        observeChange(obs, "optObjectIdCol", objectId, nil) { obj.optObjectIdCol = nil }
 
-        observeListChange(obs, "arrayBool", .insertion) { obj.arrayBool.append(true); }
-        observeListChange(obs, "arrayInt8", .insertion) { obj.arrayInt8.append(10); }
-        observeListChange(obs, "arrayInt16", .insertion) { obj.arrayInt16.append(10); }
-        observeListChange(obs, "arrayInt32", .insertion) { obj.arrayInt32.append(10); }
-        observeListChange(obs, "arrayInt64", .insertion) { obj.arrayInt64.append(10); }
-        observeListChange(obs, "arrayFloat", .insertion) { obj.arrayFloat.append(10); }
-        observeListChange(obs, "arrayDouble", .insertion) { obj.arrayDouble.append(10); }
-        observeListChange(obs, "arrayString", .insertion) { obj.arrayString.append("abc"); }
+        observeListChange(obs, "arrayBool", .insertion) { obj.arrayBool.append(true) }
+        observeListChange(obs, "arrayInt8", .insertion) { obj.arrayInt8.append(10) }
+        observeListChange(obs, "arrayInt16", .insertion) { obj.arrayInt16.append(10) }
+        observeListChange(obs, "arrayInt32", .insertion) { obj.arrayInt32.append(10) }
+        observeListChange(obs, "arrayInt64", .insertion) { obj.arrayInt64.append(10) }
+        observeListChange(obs, "arrayFloat", .insertion) { obj.arrayFloat.append(10) }
+        observeListChange(obs, "arrayDouble", .insertion) { obj.arrayDouble.append(10) }
+        observeListChange(obs, "arrayString", .insertion) { obj.arrayString.append("abc") }
+        observeListChange(obs, "arrayDecimal", .insertion) { obj.arrayDecimal.append(decimal) }
+        observeListChange(obs, "arrayObjectId", .insertion) { obj.arrayObjectId.append(objectId) }
 
-        observeListChange(obs, "arrayOptBool", .insertion) { obj.arrayOptBool.append(true); }
-        observeListChange(obs, "arrayOptInt8", .insertion) { obj.arrayOptInt8.append(10); }
-        observeListChange(obs, "arrayOptInt16", .insertion) { obj.arrayOptInt16.append(10); }
-        observeListChange(obs, "arrayOptInt32", .insertion) { obj.arrayOptInt32.append(10); }
-        observeListChange(obs, "arrayOptInt64", .insertion) { obj.arrayOptInt64.append(10); }
-        observeListChange(obs, "arrayOptFloat", .insertion) { obj.arrayOptFloat.append(10); }
-        observeListChange(obs, "arrayOptDouble", .insertion) { obj.arrayOptDouble.append(10); }
-        observeListChange(obs, "arrayOptString", .insertion) { obj.arrayOptString.append("abc"); }
-        observeListChange(obs, "arrayOptBinary", .insertion) { obj.arrayOptBinary.append(data); }
-        observeListChange(obs, "arrayOptDate", .insertion) { obj.arrayOptDate.append(date); }
+        observeListChange(obs, "arrayOptBool", .insertion) { obj.arrayOptBool.append(true) }
+        observeListChange(obs, "arrayOptInt8", .insertion) { obj.arrayOptInt8.append(10) }
+        observeListChange(obs, "arrayOptInt16", .insertion) { obj.arrayOptInt16.append(10) }
+        observeListChange(obs, "arrayOptInt32", .insertion) { obj.arrayOptInt32.append(10) }
+        observeListChange(obs, "arrayOptInt64", .insertion) { obj.arrayOptInt64.append(10) }
+        observeListChange(obs, "arrayOptFloat", .insertion) { obj.arrayOptFloat.append(10) }
+        observeListChange(obs, "arrayOptDouble", .insertion) { obj.arrayOptDouble.append(10) }
+        observeListChange(obs, "arrayOptString", .insertion) { obj.arrayOptString.append("abc") }
+        observeListChange(obs, "arrayOptBinary", .insertion) { obj.arrayOptBinary.append(data) }
+        observeListChange(obs, "arrayOptDate", .insertion) { obj.arrayOptDate.append(date) }
+        observeListChange(obs, "arrayOptDecimal", .insertion) { obj.arrayOptDecimal.append(decimal) }
+        observeListChange(obs, "arrayOptObjectId", .insertion) { obj.arrayOptObjectId.append(objectId) }
 
-        observeListChange(obs, "arrayOptBool", .insertion) { obj.arrayOptBool.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptInt8", .insertion) { obj.arrayOptInt8.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptInt16", .insertion) { obj.arrayOptInt16.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptInt32", .insertion) { obj.arrayOptInt32.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptInt64", .insertion) { obj.arrayOptInt64.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptFloat", .insertion) { obj.arrayOptFloat.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptDouble", .insertion) { obj.arrayOptDouble.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptString", .insertion) { obj.arrayOptString.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptDate", .insertion) { obj.arrayOptDate.insert(nil, at: 0); }
-        observeListChange(obs, "arrayOptBinary", .insertion) { obj.arrayOptBinary.insert(nil, at: 0); }
+        observeListChange(obs, "arrayOptBool", .insertion) { obj.arrayOptBool.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptInt8", .insertion) { obj.arrayOptInt8.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptInt16", .insertion) { obj.arrayOptInt16.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptInt32", .insertion) { obj.arrayOptInt32.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptInt64", .insertion) { obj.arrayOptInt64.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptFloat", .insertion) { obj.arrayOptFloat.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptDouble", .insertion) { obj.arrayOptDouble.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptString", .insertion) { obj.arrayOptString.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptDate", .insertion) { obj.arrayOptDate.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptBinary", .insertion) { obj.arrayOptBinary.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptDecimal", .insertion) { obj.arrayOptDecimal.insert(nil, at: 0) }
+        observeListChange(obs, "arrayOptObjectId", .insertion) { obj.arrayOptObjectId.insert(nil, at: 0) }
 
         if obs.realm == nil {
             return
@@ -272,30 +289,102 @@ class KVOTests: TestCase {
             self.realm.delete(obj)
         }
 
-        let (obj2, obs2) = getObject(KVOObject())
+        let (obj2, obs2) = getObject(SwiftKVOObject())
         observeChange(obs2, "arrayCol.invalidated", false, true) {
             self.realm.delete(obj2)
         }
     }
 
+    func testTypedObservation() {
+        let (obj, obs) = getObject(SwiftKVOObject())
+
+        // Swift 5.2+ warns when a literal keypath to a non-@objc property is
+        // passed to observe(). This only works when it's passed directly and
+        // not via a helper, so make sure we aren't triggering this warning on
+        // any property types.
+        _ = obs.observe(\.boolCol) { _, _ in }
+        _ = obs.observe(\.int8Col) { _, _ in }
+        _ = obs.observe(\.int16Col) { _, _ in }
+        _ = obs.observe(\.int32Col) { _, _ in }
+        _ = obs.observe(\.int64Col) { _, _ in }
+        _ = obs.observe(\.floatCol) { _, _ in }
+        _ = obs.observe(\.doubleCol) { _, _ in }
+        _ = obs.observe(\.stringCol) { _, _ in }
+        _ = obs.observe(\.binaryCol) { _, _ in }
+        _ = obs.observe(\.dateCol) { _, _ in }
+        _ = obs.observe(\.objectCol) { _, _ in }
+        _ = obs.observe(\.optStringCol) { _, _ in }
+        _ = obs.observe(\.optBinaryCol) { _, _ in }
+        _ = obs.observe(\.optDateCol) { _, _ in }
+        _ = obs.observe(\.optStringCol) { _, _ in }
+        _ = obs.observe(\.optBinaryCol) { _, _ in }
+        _ = obs.observe(\.optDateCol) { _, _ in }
+        _ = obs.observe(\.isInvalidated) { _, _ in }
+
+        observeChange(obs, \.boolCol, false, true) { obj.boolCol = true }
+
+        observeChange(obs, \.int8Col, 1 as Int8, 10 as Int8) { obj.int8Col = 10 }
+        observeChange(obs, \.int16Col, 2 as Int16, 10 as Int16) { obj.int16Col = 10 }
+        observeChange(obs, \.int32Col, 3 as Int32, 10 as Int32) { obj.int32Col = 10 }
+        observeChange(obs, \.int64Col, 4 as Int64, 10 as Int64) { obj.int64Col = 10 }
+        observeChange(obs, \.floatCol, 5 as Float, 10 as Float) { obj.floatCol = 10 }
+        observeChange(obs, \.doubleCol, 6 as Double, 10 as Double) { obj.doubleCol = 10 }
+        observeChange(obs, \.stringCol, "", "abc") { obj.stringCol = "abc" }
+
+        let data = "abc".data(using: String.Encoding.utf8, allowLossyConversion: false)!
+        observeChange(obs, \.binaryCol, Data(), data) { obj.binaryCol = data }
+
+        let date = Date(timeIntervalSince1970: 1)
+        observeChange(obs, \.dateCol, Date(timeIntervalSince1970: 0), date) { obj.dateCol = date }
+
+        let decimal = Decimal128(number: 2)
+        observeChange(obs, \.decimalCol, Decimal128(number: 1), decimal) { obj.decimalCol = decimal }
+
+        let oldObjectId = obj.objectIdCol
+        let objectId = ObjectId()
+        observeChange(obs, \.objectIdCol, oldObjectId, objectId) { obj.objectIdCol = objectId }
+
+        observeChange(obs, \.objectCol, nil, obj) { obj.objectCol = obj }
+
+        observeChange(obs, \.optStringCol, nil, "abc") { obj.optStringCol = "abc" }
+        observeChange(obs, \.optBinaryCol, nil, data) { obj.optBinaryCol = data }
+        observeChange(obs, \.optDateCol, nil, date) { obj.optDateCol = date }
+        observeChange(obs, \.optDecimalCol, nil, decimal) { obj.optDecimalCol = decimal }
+        observeChange(obs, \.optObjectIdCol, nil, objectId) { obj.optObjectIdCol = objectId }
+
+        observeChange(obs, \.optStringCol, "abc", nil) { obj.optStringCol = nil }
+        observeChange(obs, \.optBinaryCol, data, nil) { obj.optBinaryCol = nil }
+        observeChange(obs, \.optDateCol, date, nil) { obj.optDateCol = nil }
+        observeChange(obs, \.optDecimalCol, decimal, nil) { obj.optDecimalCol = nil }
+        observeChange(obs, \.optObjectIdCol, objectId, nil) { obj.optObjectIdCol = nil }
+
+        if obs.realm == nil {
+            return
+        }
+
+        observeChange(obs, \.isInvalidated, false, true) {
+            self.realm.delete(obj)
+        }
+    }
+
     func testReadSharedSchemaFromObservedObject() {
-        let obj = KVOObject()
+        let obj = SwiftKVOObject()
         obj.addObserver(self, forKeyPath: "boolCol", options: [.old, .new], context: nil)
-        XCTAssertEqual(type(of: obj).sharedSchema(), KVOObject.sharedSchema())
+        XCTAssertEqual(type(of: obj).sharedSchema(), SwiftKVOObject.sharedSchema())
         obj.removeObserver(self, forKeyPath: "boolCol")
     }
 }
 
 class KVOPersistedTests: KVOTests {
-    override func getObject(_ obj: KVOObject) -> (KVOObject, KVOObject) {
+    override func getObject(_ obj: SwiftKVOObject) -> (SwiftKVOObject, SwiftKVOObject) {
         realm.add(obj)
         return (obj, obj)
     }
 }
 
 class KVOMultipleAccessorsTests: KVOTests {
-    override func getObject(_ obj: KVOObject) -> (KVOObject, KVOObject) {
+    override func getObject(_ obj: SwiftKVOObject) -> (SwiftKVOObject, SwiftKVOObject) {
         realm.add(obj)
-        return (obj, realm.object(ofType: KVOObject.self, forPrimaryKey: obj.pk)!)
+        return (obj, realm.object(ofType: SwiftKVOObject.self, forPrimaryKey: obj.pk)!)
     }
 }

@@ -331,22 +331,20 @@
 }
 
 - (void)testInitAllPropertyTypes {
-    auto now = [NSDate date];
+    auto now = [NSDate dateWithTimeIntervalSince1970:1];
     auto bytes = [NSData dataWithBytes:"a" length:1];
     auto so = [[StringObject alloc] init];
     so.stringCol = @"string";
-    auto ao = [[AllTypesObject alloc] initWithValue:@[@YES, @1, @1.1f, @1.11,
-                                                      @"string", bytes,
-                                                      now, @YES, @11, so]];
+    auto ao = [[AllTypesObject alloc] initWithValue:[AllTypesObject values:1 stringObject:so]];
     XCTAssertEqual(ao.boolCol, YES);
     XCTAssertEqual(ao.intCol, 1);
     XCTAssertEqual(ao.floatCol, 1.1f);
     XCTAssertEqual(ao.doubleCol, 1.11);
-    XCTAssertEqualObjects(ao.stringCol, @"string");
+    XCTAssertEqualObjects(ao.stringCol, @"a");
     XCTAssertEqualObjects(ao.binaryCol, bytes);
     XCTAssertEqual(ao.dateCol, now);
     XCTAssertEqual(ao.cBoolCol, true);
-    XCTAssertEqual(ao.longCol, 11);
+    XCTAssertEqual(ao.longCol, INT_MAX + 1LL);
     XCTAssertEqual(ao.objectCol, so);
 
     auto opt = [[AllOptionalTypes alloc] initWithValue:@[NSNull.null, NSNull.null,
@@ -588,22 +586,20 @@
     auto realm = RLMRealm.defaultRealm;
     [realm beginWriteTransaction];
 
-    auto now = [NSDate date];
+    auto now = [NSDate dateWithTimeIntervalSince1970:1];
     auto bytes = [NSData dataWithBytes:"a" length:1];
     auto so = [[StringObject alloc] init];
     so.stringCol = @"string";
-    auto ao = [AllTypesObject createInRealm:realm withValue:@[@YES, @1, @1.1f, @1.11,
-                                                              @"string", bytes,
-                                                              now, @YES, @11, so]];
+    auto ao = [AllTypesObject createInRealm:realm withValue:[AllTypesObject values:1 stringObject:so]];
     XCTAssertEqual(ao.boolCol, YES);
     XCTAssertEqual(ao.intCol, 1);
     XCTAssertEqual(ao.floatCol, 1.1f);
     XCTAssertEqual(ao.doubleCol, 1.11);
-    XCTAssertEqualObjects(ao.stringCol, @"string");
+    XCTAssertEqualObjects(ao.stringCol, @"a");
     XCTAssertEqualObjects(ao.binaryCol, bytes);
     XCTAssertEqualObjects(ao.dateCol, now);
     XCTAssertEqual(ao.cBoolCol, true);
-    XCTAssertEqual(ao.longCol, 11);
+    XCTAssertEqual(ao.longCol, INT_MAX + 1LL);
     XCTAssertNotEqual(ao.objectCol, so);
     XCTAssertEqualObjects(ao.objectCol.stringCol, @"string");
 
@@ -922,11 +918,15 @@
                                       @"Realm must not be nil");
 }
 
-- (void)testCreatingObjectWithoutAnyPropertiesThrows {
+- (void)testCreatingObjectWithoutAnyPropertiesWorks {
+    @autoreleasepool {
+        auto realm = [RLMRealm defaultRealm];
+        [realm beginWriteTransaction];
+        [AbstractObject createInRealm:realm withValue:@[]];
+        [realm commitWriteTransaction];
+    }
     auto realm = [RLMRealm defaultRealm];
-    [realm beginWriteTransaction];
-    RLMAssertThrows([AbstractObject createInRealm:realm withValue:@[]]);
-    [realm cancelWriteTransaction];
+    XCTAssertEqual(1U, [AbstractObject allObjectsInRealm:realm].count);
 }
 
 - (void)testCreateWithNonEnumerableValueForArrayProperty {
@@ -1249,9 +1249,12 @@
     auto realm = [RLMRealm defaultRealm];
     [realm beginWriteTransaction];
 
-    auto dog = [DogObject createInRealm:realm withValue:@[@"name", @1]];
+    id dog = [DogObject createInRealm:realm withValue:@[@"name", @1]];
+    id dog2 = [DogObject allObjectsInRealm:realm].firstObject;
     [realm deleteObject:dog];
     RLMAssertThrowsWithReason([realm addObject:dog],
+                              @"Adding a deleted or invalidated");
+    RLMAssertThrowsWithReason([realm addObject:dog2],
                               @"Adding a deleted or invalidated");
 
     [realm cancelWriteTransaction];
@@ -1292,11 +1295,15 @@
     [realm cancelWriteTransaction];
 }
 
-- (void)testAddingObjectWithoutAnyPropertiesThrows {
+- (void)testAddingObjectWithoutAnyPropertiesWorks {
+    @autoreleasepool {
+        auto realm = [RLMRealm defaultRealm];
+        [realm beginWriteTransaction];
+        [realm addObject:[[AbstractObject alloc] initWithValue:@[]]];
+        [realm commitWriteTransaction];
+    }
     auto realm = [RLMRealm defaultRealm];
-    [realm beginWriteTransaction];
-    RLMAssertThrows([realm addObject:[[AbstractObject alloc] initWithValue:@[]]]);
-    [realm cancelWriteTransaction];
+    XCTAssertEqual(1U, [AbstractObject allObjectsInRealm:realm].count);
 }
 
 - (void)testAddWithCustomAccessors {
@@ -1408,6 +1415,7 @@
 
     RLMAssertThrowsWithReason([realm addOrUpdateObject:[DogObject new]],
                               @"'DogObject' does not have a primary key");
+    [realm cancelWriteTransaction];
 }
 
 - (void)testAddOrUpdateUpdatesExistingItemWithSamePK {

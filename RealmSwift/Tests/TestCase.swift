@@ -22,11 +22,15 @@ import Realm.Dynamic
 import RealmSwift
 import XCTest
 
+#if canImport(RealmTestSupport)
+import RealmTestSupport
+#endif
+
 func inMemoryRealm(_ inMememoryIdentifier: String) -> Realm {
     return try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: inMememoryIdentifier))
 }
 
-class TestCase: XCTestCase {
+class TestCase: RLMTestCaseBase {
     var exceptionThrown = false
     var testDir: String! = nil
 
@@ -37,22 +41,6 @@ class TestCase: XCTestCase {
         var configuration = configuration
         configuration.fileURL = testRealmURL()
         return try! Realm(configuration: configuration)
-    }
-
-    override class func setUp() {
-        super.setUp()
-#if DEBUG || arch(i386) || arch(x86_64)
-        // Disable actually syncing anything to the disk to greatly speed up the
-        // tests, but only when not running on device because it can't be
-        // re-enabled and we need it enabled for performance tests
-        RLMDisableSyncToDisk()
-#endif
-        do {
-            // Clean up any potentially lingering Realm files from previous runs
-            try FileManager.default.removeItem(atPath: RLMRealmPathForFile(""))
-        } catch {
-            // The directory might not actually already exist, so not an error
-        }
     }
 
     override class func tearDown() {
@@ -76,6 +64,7 @@ class TestCase: XCTestCase {
 
         exceptionThrown = false
         autoreleasepool { super.invokeTest() }
+        queue.sync { }
 
         if !exceptionThrown {
             XCTAssertFalse(RLMHasCachedRealmForPath(defaultRealmURL().path))
@@ -99,10 +88,6 @@ class TestCase: XCTestCase {
         }
     }
 
-    func resetRealmState() {
-        RLMRealm.resetRealmState()
-    }
-
     func dispatchSyncNewThread(block: @escaping () -> Void) {
         queue.async {
             autoreleasepool {
@@ -122,13 +107,13 @@ class TestCase: XCTestCase {
             return
         }
         XCTFail("Objects expected to be equal, but weren't. First: \(String(describing: o1)), "
-            + "second: \(String(describing: o2))", file: fileName, line: lineNumber)
+            + "second: \(String(describing: o2))", file: (fileName), line: lineNumber)
     }
 
     /// Check whether two collections containing Realm objects are equal.
     func assertEqual<C: Collection>(_ c1: C, _ c2: C, fileName: StaticString = #file, lineNumber: UInt = #line)
         where C.Iterator.Element: Object {
-            XCTAssertEqual(c1.count, c2.count, "Collection counts were incorrect", file: fileName, line: lineNumber)
+            XCTAssertEqual(c1.count, c2.count, "Collection counts were incorrect", file: (fileName), line: lineNumber)
             for (o1, o2) in zip(c1, c2) {
                 assertEqual(o1, o2, fileName: fileName, lineNumber: lineNumber)
             }
@@ -137,14 +122,14 @@ class TestCase: XCTestCase {
     func assertEqual<T: Equatable>(_ expected: [T?], _ actual: [T?], file: StaticString = #file, line: UInt = #line) {
         if expected.count != actual.count {
             XCTFail("assertEqual failed: (\"\(expected)\") is not equal to (\"\(actual)\")",
-                file: file, line: line)
+                file: (file), line: line)
             return
         }
 
-        XCTAssertEqual(expected.count, actual.count, "Collection counts were incorrect", file: file, line: line)
+        XCTAssertEqual(expected.count, actual.count, "Collection counts were incorrect", file: (file), line: line)
         for (e, a) in zip(expected, actual) where e != a {
             XCTFail("assertEqual failed: (\"\(expected)\") is not equal to (\"\(actual)\")",
-                file: file, line: line)
+                file: (file), line: line)
             return
         }
     }
@@ -173,7 +158,7 @@ class TestCase: XCTestCase {
             try block()
         } catch {
             XCTFail("Expected no error, but instead caught <\(error)>.",
-                file: fileName, line: lineNumber)
+                file: (fileName), line: lineNumber)
         }
     }
 
@@ -183,12 +168,12 @@ class TestCase: XCTestCase {
         do {
             _ = try block()
             XCTFail("Expected to catch <\(expectedError)>, but no error was thrown.",
-                file: fileName, line: lineNumber)
+                file: (fileName), line: lineNumber)
         } catch let e as Realm.Error where e.code == expectedError {
             // Success!
         } catch {
             XCTFail("Expected to catch <\(expectedError)>, but instead caught <\(error)>.",
-                file: fileName, line: lineNumber)
+                file: (fileName), line: lineNumber)
         }
     }
 
@@ -198,18 +183,18 @@ class TestCase: XCTestCase {
         do {
             _ = try block()
             XCTFail("Expected to catch <\(expectedError)>, but no error was thrown.",
-                file: fileName, line: lineNumber)
+                file: (fileName), line: lineNumber)
         } catch let e where e._code == expectedError._code {
             // Success!
         } catch {
             XCTFail("Expected to catch <\(expectedError)>, but instead caught <\(error)>.",
-                file: fileName, line: lineNumber)
+                file: (fileName), line: lineNumber)
         }
     }
 
     func assertNil<T>(block: @autoclosure() -> T?, _ message: String? = nil,
                       fileName: StaticString = #file, lineNumber: UInt = #line) {
-        XCTAssert(block() == nil, message ?? "", file: fileName, line: lineNumber)
+        XCTAssert(block() == nil, message ?? "", file: (fileName), line: lineNumber)
     }
 
     func assertMatches(_ block: @autoclosure () -> String, _ regexString: String, _ message: String? = nil,
@@ -235,14 +220,3 @@ class TestCase: XCTestCase {
         return directory.appendingPathComponent(fileName, isDirectory: false)
     }
 }
-
-#if !swift(>=3.2)
-func XCTAssertEqual<F: FloatingPoint>(_ expression1: F, _ expression2: F, accuracy: F,
-                                      file: StaticString = #file, line: UInt = #line) {
-    XCTAssertEqualWithAccuracy(expression1, expression2, accuracy: accuracy, file: file, line: line)
-}
-func XCTAssertNotEqual<F: FloatingPoint>(_ expression1: F, _ expression2: F, accuracy: F,
-                                         file: StaticString = #file, line: UInt = #line) {
-    XCTAssertNotEqualWithAccuracy(expression1, expression2, accuracy, file: file, line: line)
-}
-#endif

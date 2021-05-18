@@ -93,9 +93,9 @@
 			children = (
 				E8AA50FA1B015B2B00C6A3F9 /* CocoaPodsExample */,
 				E8AA51111B015B2B00C6A3F9 /* CocoaPodsExampleTests */,
-				E8AA50F91B015B2B00C6A3F9 /* Products */,
-				4BE6B3BAD4790C0E6B17EFAA /* Pods */,
 				BDEF7ACC398E86B23E1E3E0E /* Frameworks */,
+				4BE6B3BAD4790C0E6B17EFAA /* Pods */,
+				E8AA50F91B015B2B00C6A3F9 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -111,13 +111,13 @@
 		E8AA50FA1B015B2B00C6A3F9 /* CocoaPodsExample */ = {
 			isa = PBXGroup;
 			children = (
+				E8AA50FB1B015B2B00C6A3F9 /* Supporting Files */,
 				E8AA50FD1B015B2B00C6A3F9 /* AppDelegate.h */,
 				E8AA50FE1B015B2B00C6A3F9 /* AppDelegate.m */,
-				E8AA51021B015B2B00C6A3F9 /* ViewController.h */,
-				E8AA51031B015B2B00C6A3F9 /* ViewController.m */,
 				E8AA51051B015B2B00C6A3F9 /* Images.xcassets */,
 				E8AA51071B015B2B00C6A3F9 /* Main.storyboard */,
-				E8AA50FB1B015B2B00C6A3F9 /* Supporting Files */,
+				E8AA51021B015B2B00C6A3F9 /* ViewController.h */,
+				E8AA51031B015B2B00C6A3F9 /* ViewController.m */,
 			);
 			path = CocoaPodsExample;
 			sourceTree = "<group>";
@@ -134,8 +134,8 @@
 		E8AA51111B015B2B00C6A3F9 /* CocoaPodsExampleTests */ = {
 			isa = PBXGroup;
 			children = (
-				E8AA51141B015B2B00C6A3F9 /* CocoaPodsExampleTests.m */,
 				E8AA51121B015B2B00C6A3F9 /* Supporting Files */,
+				E8AA51141B015B2B00C6A3F9 /* CocoaPodsExampleTests.m */,
 			);
 			path = CocoaPodsExampleTests;
 			sourceTree = "<group>";
@@ -159,8 +159,6 @@
 				E8AA50F41B015B2B00C6A3F9 /* Sources */,
 				E8AA50F51B015B2B00C6A3F9 /* Frameworks */,
 				E8AA50F61B015B2B00C6A3F9 /* Resources */,
-				905C283AD5A7630DC8AFF9E9 /* [CP] Copy Pods Resources */,
-				9E85C0DBB9100AED2A2B5774 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -179,8 +177,6 @@
 				E8AA510A1B015B2B00C6A3F9 /* Sources */,
 				E8AA510B1B015B2B00C6A3F9 /* Frameworks */,
 				E8AA510C1B015B2B00C6A3F9 /* Resources */,
-				BE4D3ADD47292D8FC09F3808 /* [CP] Copy Pods Resources */,
-				B0E96406E59EAB346DCFC162 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -198,7 +194,7 @@
 		E8AA50F01B015B2B00C6A3F9 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0630;
+				LastUpgradeCheck = 1250;
 				ORGANIZATIONNAME = Realm;
 				TargetAttributes = {
 					E8AA50F71B015B2B00C6A3F9 = {
@@ -267,66 +263,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		905C283AD5A7630DC8AFF9E9 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-CocoaPodsExample/Pods-CocoaPodsExample-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		9E85C0DBB9100AED2A2B5774 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-CocoaPodsExample/Pods-CocoaPodsExample-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		B0E96406E59EAB346DCFC162 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-CocoaPodsExampleTests/Pods-CocoaPodsExampleTests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		BE4D3ADD47292D8FC09F3808 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-CocoaPodsExampleTests/Pods-CocoaPodsExampleTests-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		D87C75603586D5423A18DF26 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -352,9 +288,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E8AA51041B015B2B00C6A3F9 /* ViewController.m in Sources */,
-				E8AA51011B015B2B00C6A3F9 /* main.m in Sources */,
 				E8AA50FF1B015B2B00C6A3F9 /* AppDelegate.m in Sources */,
+				E8AA51011B015B2B00C6A3F9 /* main.m in Sources */,
+				E8AA51041B015B2B00C6A3F9 /* ViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -396,19 +332,31 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+                               CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -439,13 +387,24 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+                               CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "-";
@@ -475,6 +434,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = CocoaPodsExample/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.realm.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -487,6 +447,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = CocoaPodsExample/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.realm.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -507,6 +468,7 @@
 				);
 				INFOPLIST_FILE = CocoaPodsExampleTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.realm.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CocoaPodsExample.app/Contents/MacOS/CocoaPodsExample";
 			};
@@ -524,6 +486,7 @@
 				);
 				INFOPLIST_FILE = CocoaPodsExampleTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.realm.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CocoaPodsExample.app/Contents/MacOS/CocoaPodsExample";
 			};
